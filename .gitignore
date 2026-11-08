@@ -46,11 +46,9 @@
 **/.cache/
 **/.parcel-cache/
 **/.vite/
-
-# Dependencies
-**/package-lock.json
-**/yarn.lock
-**/pnpm-lock.yaml
+**/*.tsbuildinfo
+frontend/vite.config.js
+frontend/vite.config.d.ts
 
 # IDE / Editor
 **/.vscode/
