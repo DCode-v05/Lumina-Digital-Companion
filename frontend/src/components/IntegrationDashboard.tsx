@@ -33,7 +33,6 @@ export function IntegrationDashboard() {
     const [disconnecting, setDisconnecting] = useState<string | null>(null);
     const [tokens, setTokens] = useState<Record<string, string>>({});
 
-    // Data check states
     const [repos, setRepos] = useState<any[] | null>(null);
     const [notes, setNotes] = useState<any[] | null>(null);
     const [loadingData, setLoadingData] = useState<string | null>(null);
@@ -63,7 +62,7 @@ export function IntegrationDashboard() {
         try {
             await connectIntegration(providerId, token);
             await loadIntegrations();
-            setTokens(prev => ({ ...prev, [providerId]: '' })); // Clear input
+            setTokens(prev => ({ ...prev, [providerId]: '' }));
         } catch (e) {
             console.error("Connection failed", e);
             alert("Failed to connect. Check your token.");
@@ -101,7 +100,6 @@ export function IntegrationDashboard() {
         try {
             await disconnectIntegration(providerId);
             await loadIntegrations();
-            // Clear the data preview if it was showing
             if (providerId === 'github') setRepos(null);
             if (providerId === 'onenote') setNotes(null);
         } catch (e) {
@@ -234,7 +232,6 @@ export function IntegrationDashboard() {
                 })}
             </div>
 
-            {/* Data Preview Section (For testing/demo) */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
                 {repos && (
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">

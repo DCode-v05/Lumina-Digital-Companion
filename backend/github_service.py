@@ -1,8 +1,6 @@
 import requests
 from datetime import datetime, timedelta
 
-# --- GitHub Integration ---
-
 GITHUB_API_URL = "https://api.github.com"
 
 def get_github_headers(token):
@@ -16,7 +14,6 @@ def fetch_github_repos(token, per_page=100):
     Fetches all repositories for the authenticated user.
     """
     try:
-        # Add type=owner to fetch only owned repos (not org repos or repos with access)
         url = f"{GITHUB_API_URL}/user/repos?type=owner&sort=updated&per_page={per_page}"
         response = requests.get(url, headers=get_github_headers(token))
         

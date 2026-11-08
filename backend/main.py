@@ -16,17 +16,8 @@ import json
 import emotion_service
 
 
-
-# ----------------------------
-# App Initialization
-# ----------------------------
-
 app = FastAPI(title="Lumina - Digital Student Companion API")
 
-
-# ----------------------------
-# CORS
-# ----------------------------
 
 app.add_middleware(
     CORSMiddleware,
@@ -36,10 +27,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-# ----------------------------
-# Startup Event
-# ----------------------------
 
 @app.on_event("startup")
 def on_startup():
@@ -63,10 +50,6 @@ def on_startup():
         print("⚠️ Redis not available:", e)
 
 
-# ----------------------------
-# Health Check
-# ----------------------------
-
 @app.get("/")
 def read_root():
     return {"status": "online", "message": "Lumina Backend Active"}
@@ -81,18 +64,13 @@ def log_coin_transaction(user: models.User, description: str, amount: int):
         history = []
         
     transaction = {
-        "date": datetime.now().strftime("%Y-%m-%d"), # Simple date string
-        # or full timestamp if preferred: datetime.now().isoformat()
+        "date": datetime.now().strftime("%Y-%m-%d"),
         "description": description,
         "amount": amount
     }
     history.append(transaction)
     user.coin_history = json.dumps(history)
 
-
-# ----------------------------
-# Auth Routes
-# ----------------------------
 
 @app.post("/register", response_model=schemas.User)
 def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
@@ -116,7 +94,6 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
 
 @app.post("/token", response_model=schemas.Token)
 def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    # Note: form_data.username maps to email in our frontend
     user = db.query(models.User).filter(models.User.email == form_data.username).first()
     
     if not user:
@@ -133,7 +110,6 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # --- Daily Reward Logic ---
     now = datetime.now(timezone.utc)
     reward_message = None
     
@@ -141,12 +117,11 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
         last_date = user.last_login.date()
         today_date = now.date()
         if today_date > last_date:
-            user.coins += 20 # Daily Check-in Reward (Updated to 20)
+            user.coins += 20
             log_coin_transaction(user, "Daily Check-in", 20)
             reward_message = "Daily check-in! +20 Coins"
     else:
-        # First login ever
-        user.coins += 50 # Welcome Bonus (adjusted to be moderate)
+        user.coins += 50
         log_coin_transaction(user, "First time login", 50)
         reward_message = "Welcome! +50 Coins"
         
@@ -170,26 +145,21 @@ def update_user_favorites(
         current_user.favorites = ""
         current_user.rewards_cache = None
         current_user.coins = 0
-        current_user.coin_history = "[]" # Clear History
+        current_user.coin_history = "[]"
         db.commit()
         return {"status": "cleared", "favorites": "", "coins": 0}
 
     was_empty = not current_user.favorites
     current_user.favorites = favorites
-    current_user.rewards_cache = None # Clear cache
+    current_user.rewards_cache = None
     
     if was_empty:
-         current_user.coins += 100 # Updated: 100 points for setting favorites
+         current_user.coins += 100
          log_coin_transaction(current_user, "Preference Set", 100)
          
     db.commit()
     return {"status": "updated", "favorites": favorites, "coins": current_user.coins}
 
-
-
-# ----------------------------
-# Chat Management Routes
-# ----------------------------
 
 @app.post("/chats", response_model=schemas.ChatMetadata)
 def create_new_chat(
@@ -207,19 +177,15 @@ def list_user_chats(current_user: models.User = Depends(auth.get_current_user)):
     user_id = str(current_user.id)
     return get_user_chats(user_id)
 
-# ----------------------------
-# Goal Management Routes
-# ----------------------------
 
 @app.post("/goals", response_model=schemas.Goal)
 def create_goal(goal: schemas.GoalCreate, current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
-    # Check for duplicate goals with same name, description, and priority
     existing_goal = db.query(models.Goal).filter(
         models.Goal.user_id == current_user.id,
         models.Goal.title == goal.title,
         models.Goal.description == goal.description,
         models.Goal.priority == goal.priority,
-        models.Goal.status != "Completed"  # Allow duplicates only if previous is completed
+        models.Goal.status != "Completed"
     ).first()
     
     if existing_goal:
@@ -229,7 +195,6 @@ def create_goal(goal: schemas.GoalCreate, current_user: models.User = Depends(au
         )
     
     db_goal = models.Goal(**goal.dict(), user_id=current_user.id)
-    # Ensure subtasks is valid JSON text if provided
     if not db_goal.subtasks:
          db_goal.subtasks = json.dumps([])
     db.add(db_goal)
@@ -255,22 +220,18 @@ def update_goal(goal_id: int, goal: schemas.GoalUpdate, current_user: models.Use
     db.commit()
     db.refresh(db_goal)
 
-    # Reward for Completion (Strict Check)
     if update_data.get('status') == 'completed' and not db_goal.rewarded:
-        current_user.coins += 50 # Updated: 50 points for goal completion
+        current_user.coins += 50
         log_coin_transaction(current_user, f"Task '{db_goal.title}' Completed", 50)
         db_goal.rewarded = True 
         db.commit()
         print(f"💰 User rewarded 50 coins for completing goal {goal_id}")
 
-    # Check for breakdown completion and generate quiz if needed
     if db_goal.subtasks:
         try:
              subtasks = json.loads(db_goal.subtasks)
-             # Check if all subtasks are completed
              all_completed = subtasks and all(t.get("completed", False) for t in subtasks if isinstance(t, dict))
              
-             # Generate quiz if all tasks completed and no quiz exists yet
              if all_completed and not db_goal.quiz_content:
                  print(f"🎉 Goal {goal_id} - All tasks completed! Generating quiz...")
                  quiz_data = generate_goal_quiz(db_goal.title, subtasks)
@@ -302,23 +263,19 @@ def get_goal_reminders(current_user: models.User = Depends(auth.get_current_user
     today = datetime.now(timezone.utc)
     
     for goal in active_goals:
-        # Calculate days elapsed since creation
         if not goal.created_at:
              continue
              
-        # simplistic day diff
         created_at = goal.created_at.replace(tzinfo=timezone.utc) if goal.created_at.tzinfo is None else goal.created_at
         days_elapsed = (today - created_at).days + 1
         
         if days_elapsed > goal.duration:
-             days_elapsed = goal.duration # Cap at max duration
+             days_elapsed = goal.duration
         
         if days_elapsed <= 0: days_elapsed = 1
         
-        # Only meaningful to send reminder if we have a breakdown or at least active
         subtasks = json.loads(goal.subtasks) if goal.subtasks else []
         
-        # Generate Reminder
         message = generate_goal_reminder(goal.title, subtasks, days_elapsed, goal.duration)
         
         reminders.append({
@@ -341,7 +298,6 @@ def get_goal_quiz(goal_id: int, current_user: models.User = Depends(auth.get_cur
     print(f"   Quiz content preview: {db_goal.quiz_content[:100] if db_goal.quiz_content else 'None'}")
     
     if not db_goal.quiz_content:
-        # Check if all tasks are completed
         if db_goal.subtasks:
             try:
                 subtasks = json.loads(db_goal.subtasks)
@@ -382,20 +338,15 @@ def decompose_goal_endpoint(
     if not db_goal:
         raise HTTPException(status_code=404, detail="Goal not found")
     
-    # Call AI
     subtasks_list = decompose_goal(db_goal.title, db_goal.duration, db_goal.duration_unit, breakdown_type)
     
-    # Update DB
     db_goal.subtasks = json.dumps(subtasks_list)
-    db_goal.status = "in_progress" # Reset status if it was completed
-    db_goal.quiz_content = None   # Reset quiz since tasks changed
-    # We do NOT reset 'rewarded' status typically to prevent farming, or reset it if meaningful change? 
-    # For now, let's keep rewarded=True if they already got it once for this goal ID.
+    db_goal.status = "in_progress"
+    db_goal.quiz_content = None
     db.commit()
     db.refresh(db_goal)
     return db_goal
 
-# --- Rewards ---
 
 @app.get("/users/me/rewards")
 def get_user_rewards(current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
@@ -470,7 +421,6 @@ def get_user_rewards(current_user: models.User = Depends(auth.get_current_user),
                     "amount": remaining
                 })
         
-        # Save inferred history
         current_user.coin_history = json.dumps(backfilled_txns)
         db.commit()
         current_history = backfilled_txns
@@ -489,7 +439,6 @@ def redeem_reward(
     current_user.coins -= request.cost
     log_coin_transaction(current_user, "Reward Redeemed", -request.cost)
     
-    # Track purchased reward
     purchased_reward = models.PurchasedReward(
         user_id=current_user.id,
         reward_name=request.reward_name,
@@ -516,7 +465,6 @@ def delete_chat_endpoint(
     current_user: models.User = Depends(auth.get_current_user)
 ):
     user_id = str(current_user.id)
-    # Check ownership ideally, but for now assuming if user has ID they can delete from their list
     delete_chat_session(user_id, chat_id)
     return {"status": "deleted"}
 
@@ -524,7 +472,6 @@ def delete_chat_endpoint(
 def get_user_profile_endpoint(current_user: models.User = Depends(auth.get_current_user)):
     user_id = str(current_user.id)
     profile = get_user_profile(user_id)
-    # Parse the newline separated string into a list for easier frontend display
     facts = [line.strip() for line in profile.split('\n') if line.strip()] if profile else []
     return {"profile_text": profile, "facts": facts}
 
@@ -538,10 +485,6 @@ def update_user_profile_endpoint(
     return {"status": "updated", "profile_text": request.profile_text}
 
 
-# ----------------------------
-# Chat Interaction Routes
-# ----------------------------
-
 @app.post("/chat", response_model=schemas.ChatResponse)
 def chat_endpoint(
     request: schemas.ChatRequest,
@@ -552,16 +495,13 @@ def chat_endpoint(
     chat_id = request.chat_id
     user_message = request.message
     
-    # --- CHECK FOR INTEGRATION REQUESTS ---
     from groq_service import detect_integration_intent
     integration_intent = detect_integration_intent(user_message)
     
     if integration_intent["type"] != "none":
-        # Handle Integration Request
         integration_type = integration_intent["type"]
         action = integration_intent["action"]
         
-        # Check if integration is connected
         integration = db.query(models.Integration).filter(
             models.Integration.user_id == current_user.id,
             models.Integration.provider == integration_type
@@ -580,7 +520,6 @@ def chat_endpoint(
                 goal_created=None
             )
         
-        # Call the appropriate service
         try:
             if integration_type == "github":
                 from github_service import (
@@ -602,13 +541,12 @@ def chat_endpoint(
                         ai_text = f"❌ Error: {result['error']}"
                     else:
                         ai_text = f"## Your GitHub Repositories ({len(result)} total)\n\n"
-                        for repo in result[:10]:  # Show first 10
+                        for repo in result[:10]:
                             ai_text += f"### 📦 [{repo['name']}]({repo['html_url']})\n"
                             ai_text += f"- **Description:** {repo['description'] or 'No description'}\n"
                             ai_text += f"- **Stars:** ⭐ {repo['stars']} | **Language:** {repo['language'] or 'N/A'} | **Private:** {'🔒 Yes' if repo['private'] else '🌍 No'}\n\n"
                 
                 elif action == "create":
-                    # Extract repo name from message
                     import re
                     match = re.search(r'(?:create|make|new)\s+(?:repo|repository)\s+(?:called|named)?\s*["\']?([a-zA-Z0-9_-]+)["\']?', user_message, re.IGNORECASE)
                     if match:
@@ -622,20 +560,16 @@ def chat_endpoint(
                         ai_text = "❌ Please specify a repository name. Example: 'Create repo called my-project'"
                 
                 elif action == "update":
-                    # Extract repo info: "rename X to Y" or "update X description to Z"
                     import re
                     
-                    # Pattern 1: "rename repo-name to new-name"
                     rename_match = re.search(r'rename\s+(?:repo\s+)?([a-zA-Z0-9_-]+)\s+to\s+([a-zA-Z0-9_-]+)', user_message, re.IGNORECASE)
                     
-                    # Pattern 2: "update repo-name description to 'text'"
                     desc_match = re.search(r'update\s+([a-zA-Z0-9_-]+)\s+description\s+to\s+["\'](.+?)["\']', user_message, re.IGNORECASE)
                     
                     if rename_match:
                         old_name = rename_match.group(1)
                         new_name = rename_match.group(2)
                         
-                        # Get owner from token (assuming it's the authenticated user)
                         user_repos = fetch_github_repos(integration.access_token, per_page=1)
                         if user_repos and len(user_repos) > 0:
                             owner = user_repos[0]['full_name'].split('/')[0]
@@ -665,14 +599,12 @@ def chat_endpoint(
                         ai_text = "❌ Please specify update details. Examples:\n- 'Rename old-repo to new-repo'\n- 'Update my-repo description to \"New description\"'"
                 
                 elif action == "delete":
-                    # Extract repo name: "delete repo-name"
                     import re
                     match = re.search(r'(?:delete|remove)\s+(?:repo|repository)?\s*([a-zA-Z0-9_-]+)', user_message, re.IGNORECASE)
                     
                     if match:
                         repo_name = match.group(1)
                         
-                        # Get owner
                         user_repos = fetch_github_repos(integration.access_token, per_page=1)
                         if user_repos and len(user_repos) > 0:
                             owner = user_repos[0]['full_name'].split('/')[0]
@@ -708,7 +640,7 @@ def chat_endpoint(
                         ai_text = f"❌ Error: {result['error']}"
                     else:
                         ai_text = f"## Your OneNote Pages ({len(result)} total)\n\n"
-                        for page in result[:10]:  # Show first 10
+                        for page in result[:10]:
                             ai_text += f"### 📄 {page['title']}\n"
                             ai_text += f"- **Created:** {page.get('created_at', 'N/A')[:10]}\n"
                             ai_text += f"- **Modified:** {page.get('modified_at', 'N/A')[:10]}\n\n"
@@ -723,7 +655,6 @@ def chat_endpoint(
                             ai_text += f"- 📁 **{section['name']}** (ID: `{section['id']}`)\n"
                 
                 elif action == "get":
-                    # Extract page ID
                     import re
                     match = re.search(r'(?:show|get|details)\s+(?:page|note)\s+(\S+)', user_message, re.IGNORECASE)
                     
@@ -748,7 +679,6 @@ def chat_endpoint(
         except Exception as e:
             ai_text = f"❌ An error occurred: {str(e)}"
         
-        # Save messages
         add_message(chat_id, "user", user_message)
         add_message(chat_id, "model", ai_text)
         
@@ -761,32 +691,23 @@ def chat_endpoint(
             goal_created=None
         )
     
-    # --- REGULAR CHAT FLOW (Non-integration) ---
-    # Clean expired memories on every interaction (or could be moved to specific login hooks)
     from redis_client import clean_expired_facts
     clean_expired_facts(user_id)
     
-    # --- Emotion Tracking ---
-    # Analyze and Log current emotion
     emotion, score = emotion_service.analyze_emotion(user_message)
     if emotion:
         emotion_service.log_emotion(db, current_user.id, emotion, score)
     
-    # Get Recent Emotion Context
     emotion_summary = emotion_service.get_recent_emotions_summary(db, current_user.id)
     
-    # Get User Profile Context
     user_profile = get_user_profile(user_id)
     
-    # Combine Profile + Emotion for context
     combined_context = user_profile
     if emotion_summary:
         combined_context = (combined_context or "") + "\n\n" + emotion_summary
 
-    # Get History (for specific chat)
     history = get_chat_history(chat_id)
     
-    # Get AI Response (with combined context)
     ai_text, title_from_ai, new_facts, mode, suggested_goal = get_ai_response(
         history, 
         user_message, 
@@ -794,14 +715,11 @@ def chat_endpoint(
         user_name=current_user.full_name
     )
     
-    # Save Context
     add_message(chat_id, "user", user_message)
     add_message(chat_id, "model", ai_text)
     
-    # Update Profile (Directly from response)
     memory_updated = False
     if new_facts:
-        # Ensure new_facts is a string
         if isinstance(new_facts, dict):
             new_facts_str = "\n".join([f"{k}: {v}" for k, v in new_facts.items()])
         elif isinstance(new_facts, list):
@@ -809,26 +727,21 @@ def chat_endpoint(
         else:
             new_facts_str = str(new_facts)
 
-        # Append new facts to existing profile
         if not user_profile or new_facts_str not in user_profile:
              updated_profile = user_profile + "\n" + new_facts_str if user_profile else new_facts_str
              update_user_profile(user_id, updated_profile)
              memory_updated = True
 
-    # Auto-Create Goal
     created_goal_title = None
     if suggested_goal:
         print(f"🎯 Auto-creating goal input: {suggested_goal}")
         try:
-            # Handle case where AI returns just a string instead of dict
             if isinstance(suggested_goal, str):
                 import re
-                # Try to extract duration from the string itself as a fallback
                 title_text = suggested_goal
                 duration = 7
                 unit = "days"
                 
-                # Regex for "1 week", "2 days", etc.
                 match = re.search(r'(\d+)\s*(day|week|month)s?', title_text, re.IGNORECASE)
                 if match:
                     try:
@@ -838,8 +751,6 @@ def chat_endpoint(
                         elif "week" in unit_str: unit = "weeks"
                         elif "month" in unit_str: unit = "months"
                         
-                        # Convert weeks/months to days for consistency if preferred, 
-                        # but our model supports units, so keep them.
                     except:
                         pass
 
@@ -870,13 +781,11 @@ def chat_endpoint(
             print(f"❌ Failed to auto-create goal: {e}")
             created_goal_title = None
 
-    # Generate Title (if it's the first message)
     new_title = None
     if len(history) == 0:
         if title_from_ai:
              new_title = title_from_ai
         else:
-             # Fallback to local fast generation if AI didn't provide one
              new_title = generate_chat_title(user_message)
         
         update_chat_title(user_id, chat_id, new_title)
@@ -898,9 +807,6 @@ def get_chat_history_endpoint(
 
     return get_chat_history(chat_id)
 
-# ----------------------------
-# Integration Routes
-# ----------------------------
 
 @app.post("/integrations/connect", response_model=schemas.IntegrationStatus)
 def connect_integration(
@@ -908,7 +814,6 @@ def connect_integration(
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(get_db)
 ):
-    # Check if integration already exists
     integration = db.query(models.Integration).filter(
         models.Integration.user_id == current_user.id,
         models.Integration.provider == request.provider
@@ -921,7 +826,6 @@ def connect_integration(
         )
         db.add(integration)
 
-    # Update tokens
     integration.access_token = request.access_token
     integration.refresh_token = request.refresh_token
     
@@ -941,7 +845,6 @@ def list_integrations(
     integrations = db.query(models.Integration).filter(models.Integration.user_id == current_user.id).all()
     results = []
     
-    # We want to show status for supported providers even if not connected
     supported = ["github", "onenote"]
     connected_map = {i.provider: i for i in integrations}
     
@@ -950,7 +853,7 @@ def list_integrations(
             results.append({
                 "provider": prov,
                 "is_connected": True,
-                "last_synced": connected_map[prov].created_at # approximate
+                "last_synced": connected_map[prov].created_at
             })
         else:
              results.append({
@@ -980,9 +883,6 @@ def disconnect_integration(
     
     return {"message": f"{provider} integration disconnected successfully"}
 
-# --- Service Proxies ---
-
-# GitHub Endpoints
 
 @app.get("/integrations/github/repos", response_model=list[schemas.GitHubRepo])
 def get_user_github_repos(
@@ -1129,7 +1029,6 @@ def delete_github_repo_endpoint(
         
     return result
 
-# OneNote Endpoints
 
 @app.get("/integrations/onenote/pages", response_model=list[schemas.OneNotePage])
 def get_user_onenote_pages(

@@ -33,12 +33,12 @@ class Goal(Base):
     title = Column(String)
     description = Column(String, nullable=True)
     duration = Column(Integer)
-    duration_unit = Column(String)  # 'days', 'weeks', 'months'
-    priority = Column(String)  # 'High', 'Medium', 'Low'
-    status = Column(String, default="not_started")  # 'not_started', 'in_progress', 'completed'
+    duration_unit = Column(String)
+    priority = Column(String)
+    status = Column(String, default="not_started")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    subtasks = Column(Text, nullable=True)  # JSON string of subtasks
-    quiz_content = Column(Text, nullable=True) # JSON string of generated quiz
+    subtasks = Column(Text, nullable=True)
+    quiz_content = Column(Text, nullable=True)
     rewarded = Column(Boolean, default=False)
 
 class UserFact(Base):
@@ -54,11 +54,11 @@ class Integration(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
-    provider = Column(String)  # 'github', 'onenote'
+    provider = Column(String)
     access_token = Column(String)
     refresh_token = Column(String, nullable=True)
     expires_at = Column(DateTime(timezone=True), nullable=True)
-    settings = Column(Text, nullable=True)  # JSON string for extra config
+    settings = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 class PurchasedReward(Base):

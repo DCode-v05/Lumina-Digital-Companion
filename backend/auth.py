@@ -19,7 +19,6 @@ def verify_password(plain_password, hashed_password):
     return bcrypt.checkpw(plain_password, hashed_password)
 
 def get_password_hash(password):
-    # Bcrypt has a 72-byte password limit, truncate if necessary
     if isinstance(password, str):
         password = password.encode('utf-8')
     if len(password) > 72:

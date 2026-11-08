@@ -35,9 +35,8 @@ export function RewardDashboard({ favorites, initialBalance, onBalanceUpdate }: 
         setLoading(true);
         loadRewards();
         loadPurchasedRewards();
-    }, [favorites]); // Reload when favorites change
+    }, [favorites]);
 
-    // Update balance when initialBalance prop changes
     useEffect(() => {
         if (initialBalance !== undefined) {
             setBalance(initialBalance);
@@ -74,7 +73,7 @@ export function RewardDashboard({ favorites, initialBalance, onBalanceUpdate }: 
             if (onBalanceUpdate) {
                 onBalanceUpdate(res.new_balance);
             }
-            await loadPurchasedRewards(); // Reload purchased rewards
+            await loadPurchasedRewards();
             alert("Reward Redeemed! Enjoy your break.");
         } catch (e) {
             alert("Redemption failed");
@@ -89,7 +88,6 @@ export function RewardDashboard({ favorites, initialBalance, onBalanceUpdate }: 
 
     return (
         <div className="space-y-8 pb-12 relative">
-            {/* Header / Stats */}
             <div className="bg-gradient-to-r from-amber-500/10 to-orange-600/10 border border-amber-500/20 rounded-2xl p-4 flex items-center justify-between shadow-lg relative overflow-hidden">
                 <div className="absolute inset-0 bg-grid-white/5 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))] pointer-events-none"></div>
                 <div className="relative z-10">
@@ -117,7 +115,6 @@ export function RewardDashboard({ favorites, initialBalance, onBalanceUpdate }: 
                 </div>
             </div>
 
-            {/* Reward Grid */}
             <div className="space-y-12">
                 {categories.map((cat) => {
                     const catItems = items.filter(i => (i.category || 'General') === cat);
@@ -179,7 +176,6 @@ export function RewardDashboard({ favorites, initialBalance, onBalanceUpdate }: 
                 })}
             </div>
 
-            {/* My Rewards Modal */}
             <AnimatePresence>
                 {showMyRewards && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setShowMyRewards(false)}>

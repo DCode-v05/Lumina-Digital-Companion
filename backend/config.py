@@ -5,7 +5,6 @@ load_dotenv()
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-# Model Configuration
 MODEL_CONFIG = {
     "primary": "llama-3.1-8b-instant",
     "academic": "openai/gpt-oss-120b", 
@@ -13,11 +12,9 @@ MODEL_CONFIG = {
     "teaching": "meta-llama/llama-4-maverick-17b-128e-instruct"
 }
 
-# Redis
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
 
-# Postgres
 POSTGRES_USER = os.getenv("POSTGRES_USER", "abinesh")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "abinesh%40123")
 POSTGRES_DB = os.getenv("POSTGRES_DB", "abidb")
@@ -25,7 +22,6 @@ POSTGRES_HOST = os.getenv("POSTGRES_HOST", "127.0.0.1")
 POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5431")
 DATABASE_URL = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
 
-# Auth
 SECRET_KEY = os.getenv("SECRET_KEY", "default_secret_key")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30))

@@ -1,8 +1,6 @@
 import requests
 from datetime import datetime, timedelta
 
-# --- OneNote Integration (Microsoft Graph) - Read-Only ---
-
 GRAPH_API_URL = "https://graph.microsoft.com/v1.0"
 
 def get_graph_headers(token):

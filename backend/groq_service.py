@@ -4,10 +4,8 @@ import re
 from groq import Groq
 from config import GROQ_API_KEY, MODEL_CONFIG
 
-# Initialize Groq Client
 client = Groq(api_key=GROQ_API_KEY)
 
-# --- INTEGRATION DETECTION ---
 
 def detect_integration_intent(user_message):
     """
@@ -16,7 +14,6 @@ def detect_integration_intent(user_message):
     """
     message_lower = user_message.lower()
     
-    # GitHub detection patterns
     github_patterns = {
         "count": ["how many repos", "count my repos", "total repos", "number of repositories"],
         "list": ["show repos", "list repos", "my repositories", "github repos", "what repos"],
@@ -26,7 +23,6 @@ def detect_integration_intent(user_message):
         "delete": ["delete repo", "remove repo"]
     }
     
-    # OneNote detection patterns (read-only)
     onenote_patterns = {
         "count": ["how many pages", "count my notes", "total pages", "number of notes", "count notes", "how many onenote"],
         "list": ["show pages", "list notes", "my onenote", "onenote pages", "what notes", "show notes", "list my notes"],
@@ -34,19 +30,16 @@ def detect_integration_intent(user_message):
         "get": ["show page", "details of page", "info about note", "get page"]
     }
     
-    # Check GitHub
     for action, patterns in github_patterns.items():
         if any(pattern in message_lower for pattern in patterns):
             return {"type": "github", "action": action, "params": {}}
     
-    # Check OneNote  
     for action, patterns in onenote_patterns.items():
         if any(pattern in message_lower for pattern in patterns):
             return {"type": "onenote", "action": action, "params": {}}
     
     return {"type": "none", "action": None, "params": {}}
 
-# --- PROMPTS & BEHAVIOR CONFIGURATION ---
 
 JSON_SCHEMA_INSTRUCTION = """
 ### RESPONSE FORMAT (STRICT JSON ONLY)
@@ -191,7 +184,7 @@ def classify_request(user_message):
         ]
 
         completion = client.chat.completions.create(
-            model=MODEL_CONFIG["primary"], # Use lightweight model for routing
+            model=MODEL_CONFIG["primary"],
             messages=messages,
             temperature=0.3,
             response_format={"type": "json_object"}
@@ -206,43 +199,31 @@ def classify_request(user_message):
         return "primary"
 
 
-
 def get_ai_response(history, user_message, user_profile="", user_name=None):
     try:
-        # Dynamic Mode Selection (Router)
-        # Enforce backend routing.
         
-        # We only route based on the *latest* message usually.
         detected_mode = classify_request(user_message)
         print(f"🧭 Router decided mode: {detected_mode}")
         
-        # Fallback if classifier returns garbage
         if detected_mode not in MODEL_CONFIG:
             detected_mode = "primary"
 
-        # Determine Model
         model_name = MODEL_CONFIG.get(detected_mode, MODEL_CONFIG["primary"])
         
-        # Select System Instruction based on Mode
         system_instruction = SYSTEM_INSTRUCTIONS.get(detected_mode, PRIMARY_INSTRUCTION)
 
-        # Prepare Messages
-        # Inject Name into System Instruction if possible, or just append strictly to user context
         if user_name:
              system_instruction += f"\n\nContext: The user's name is {user_name}. When storing 'new_user_facts', refer to them as '{user_name}' instead of 'User' if it sounds natural, or 'User' is fine."
 
         messages = [{"role": "system", "content": system_instruction}]
         
-        # Optimization: Limit history to last 10 messages (5 turns)
         trimmed_history = history[-10:] if len(history) > 10 else history
         
-        # Convert History (Gemini -> OpenAI format)
         for msg in trimmed_history:
             role = "assistant" if msg["role"] == "model" else "user"
             content = msg["parts"][0] if isinstance(msg["parts"], list) else str(msg["parts"])
             messages.append({"role": role, "content": content})
             
-        # Add Current User Message with Context
         effective_message = user_message
         context_parts = []
         if user_profile:
@@ -253,13 +234,11 @@ def get_ai_response(history, user_message, user_profile="", user_name=None):
         if context_parts:
              effective_message = "\n\n".join(context_parts) + f"\n\nUser Query:\n{user_message}"
         
-        # Explicit Title Request for First Message
         if not history:
              effective_message += "\n\n(System: This is the first message. Please generate a 'title' field in the JSON response.)"
 
         messages.append({"role": "user", "content": effective_message})
 
-        # Call Groq API
         print(f"🤖 Calling Groq with model: {model_name} (Mode: {detected_mode})")
         try:
             completion = client.chat.completions.create(
@@ -293,7 +272,6 @@ def get_ai_response(history, user_message, user_profile="", user_name=None):
         suggested_goal = None
 
         try:
-            # Enhanced JSON Cleanup
             clean_text = text.strip()
             start_index = clean_text.find('{')
             end_index = clean_text.rfind('}')
@@ -330,10 +308,8 @@ def decompose_goal(title, duration, duration_unit, breakdown_type="daily"):
     breakdown_type: 'daily' or 'weekly'
     """
     try:
-        # Determine the granularity instruction
         granularity = "day" if breakdown_type == "daily" else "week"
 
-        # Normalize duration to match granularity
         normalized_duration = duration
         if granularity == "day":
             if "week" in duration_unit.lower():
@@ -343,12 +319,10 @@ def decompose_goal(title, duration, duration_unit, breakdown_type="daily"):
         elif granularity == "week":
              if "month" in duration_unit.lower():
                 normalized_duration = duration * 4
-             # If unit is days but we want weeks, usually uncommon for long goals, but handle simple case
              elif "day" in duration_unit.lower():
                   normalized_duration = max(1, duration // 7)
 
         if normalized_duration == 1 and granularity == "day":
-             # Special handling for single day goals -> Hourly/Session breakdown
              prompt = f"""
              You are an expert planner. The user has a 1-day goal: "{title}".
              Create a detailed schedule broken down by DURATION.
@@ -367,7 +341,6 @@ def decompose_goal(title, duration, duration_unit, breakdown_type="daily"):
              Example: {{ "subtasks": [ {{ "text": "1 Hr: Research core concepts", "completed": false }} ] }}
              """
         else:
-             # Standard multi-day/week breakdown
              prompt = f"""
              You are an expert planner. The user has a goal: "{title}" to be completed in {duration} {duration_unit}.
              Create a detailed, step-by-step roadmap broken down by {granularity}.
@@ -406,13 +379,9 @@ def generate_goal_reminder(goal_title, subtasks, days_elapsed, duration):
     Generates a context-aware reminder for the user based on their goal progress.
     """
     try:
-        # Calculate progress
         total_tasks = len(subtasks)
         completed_tasks = sum(1 for t in subtasks if t.get("completed", False))
         
-        # Find the current expected task (Day X)
-        # Assuming subtasks are ordered Day 1, Day 2...
-        # If days_elapsed is 4, we expect task index 3 (Day 4) to be active or done.
         
         target_task_index = min(days_elapsed - 1, total_tasks - 1)
         if target_task_index < 0: target_task_index = 0
@@ -458,7 +427,6 @@ def generate_goal_quiz(goal_title, subtasks):
     Returns None if not learning related.
     """
     try:
-        # Flatten subtasks text for context
         content_context = "\n".join([t.get("text", "") for t in subtasks])
         
         prompt = f"""
@@ -514,7 +482,7 @@ def generate_goal_quiz(goal_title, subtasks):
         """
         
         completion = client.chat.completions.create(
-            model=MODEL_CONFIG["academic"], # Use academic model for better quality questions
+            model=MODEL_CONFIG["academic"],
             messages=[{"role": "user", "content": prompt}],
             temperature=0.5,
             response_format={"type": "json_object"}
@@ -528,7 +496,6 @@ def generate_goal_quiz(goal_title, subtasks):
             print(f"ℹ️  Goal '{goal_title}' not detected as a learning goal")
             return None
         
-        # Validate that we have questions
         if not data.get("questions") or len(data["questions"]) < 5:
             print(f"⚠️  Quiz generated but has {len(data.get('questions', []))} questions (expected 5)")
             

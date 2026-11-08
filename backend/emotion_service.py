@@ -62,12 +62,10 @@ def get_recent_emotions_summary(db: Session, user_id: int, minutes: int = 15) ->
     if not logs:
         return ""
         
-    # Create a frequency map or just a chronological list
-    # Let's do a chronological list of significant emotions (> 0.5 score)
     significant_logs = [log for log in logs if log.score > 0.5]
     
     if not significant_logs:
         return ""
 
-    emotions = [f"{log.emotion} ({int(log.score*100)}%)" for log in significant_logs[:5]] # Limit to last 5
+    emotions = [f"{log.emotion} ({int(log.score*100)}%)" for log in significant_logs[:5]]
     return "Recent User Emotions: " + ", ".join(emotions) if emotions else ""

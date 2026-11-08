@@ -9,12 +9,10 @@ export function GoalDashboard() {
     const [expandingId, setExpandingId] = useState<number | null>(null);
     const [processingId, setProcessingId] = useState<number | null>(null);
 
-    // Modal States
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editingGoal, setEditingGoal] = useState<Partial<Goal> | null>(null);
     const [deleteId, setDeleteId] = useState<number | null>(null);
 
-    // Quiz States
     const [isQuizOpen, setIsQuizOpen] = useState(false);
     const [quizData, setQuizData] = useState<any>(null);
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -43,11 +41,9 @@ export function GoalDashboard() {
 
         try {
             if (editingGoal.id) {
-                // Update
                 const updated = await updateGoal(editingGoal.id, editingGoal);
                 setGoals(prev => prev.map(g => g.id === updated.id ? updated : g));
             } else {
-                // Create
                 // @ts-ignore - Backend handles defaults
                 const newGoal = await createGoal({
                     title: editingGoal.title,
@@ -77,12 +73,11 @@ export function GoalDashboard() {
         }
     };
 
-    // State for breakdown modal
     const [breakdownGoalId, setBreakdownGoalId] = useState<number | null>(null);
 
     const handleDecomposeClick = (goal: Goal) => {
         if (goal.duration_unit === 'months') {
-            setBreakdownGoalId(goal.id); // Ask user preference
+            setBreakdownGoalId(goal.id);
         } else {
             handleDecompose(goal.id, 'daily');
         }
@@ -94,7 +89,7 @@ export function GoalDashboard() {
         try {
             const updatedGoal = await decomposeGoal(id, breakdownType);
             setGoals(prev => prev.map(g => g.id === id ? updatedGoal : g));
-            setExpandingId(id); // Auto expand to show steps
+            setExpandingId(id);
         } catch (e) {
             console.error("Failed to decompose", e);
         } finally {
@@ -105,20 +100,17 @@ export function GoalDashboard() {
     const toggleSubtask = async (goal: Goal, index: number) => {
         const subtasks = getSubtasks(goal.subtasks);
         if (subtasks[index] && typeof subtasks[index] === 'object') {
-            // Check if this day can be toggled based on previous days
             const isDayTask = subtasks[index].text?.toLowerCase().includes('day ');
             if (isDayTask) {
                 const dayMatch = subtasks[index].text.match(/day (\d+):/i);
                 if (dayMatch) {
                     const currentDay = parseInt(dayMatch[1]);
-                    // Check if previous days are completed
                     for (let i = 0; i < index; i++) {
                         const prevTask = subtasks[i];
                         if (typeof prevTask === 'object') {
                             const prevDayMatch = prevTask.text?.match(/day (\d+):/i);
                             if (prevDayMatch) {
                                 const prevDay = parseInt(prevDayMatch[1]);
-                                // If this is a previous day and it's not completed, block the toggle
                                 if (prevDay < currentDay && !prevTask.completed) {
                                     alert(`Please complete Day ${prevDay} first before starting Day ${currentDay}`);
                                     return;
@@ -143,7 +135,6 @@ export function GoalDashboard() {
             newStatus = 'in_progress';
         }
 
-        // Optimistic Update
         const updatedSubtasksJson = JSON.stringify(subtasks);
         setGoals(prev => prev.map(g => g.id === goal.id ? { ...g, subtasks: updatedSubtasksJson, status: newStatus } : g));
 
@@ -151,11 +142,10 @@ export function GoalDashboard() {
             await updateGoal(goal.id, { subtasks: updatedSubtasksJson, status: newStatus });
         } catch (e) {
             console.error("Failed to update subtask", e);
-            loadGoals(); // Revert
+            loadGoals();
         }
     }
 
-    // ... (rest of the file until rendering subtasks)
 
     const toggleStatus = async (goal: Goal) => {
         const newStatus = goal.status === 'completed' ? 'in_progress' : 'completed';
@@ -164,7 +154,7 @@ export function GoalDashboard() {
             await updateGoal(goal.id, { status: newStatus });
         } catch (e) {
             console.error("Failed to update status", e);
-            loadGoals(); // Revert
+            loadGoals();
         }
     };
 
@@ -215,10 +205,7 @@ export function GoalDashboard() {
 
     const handleAnswer = (selectedOption: string) => {
         const currentQuestion = quizData.questions[currentQuestionIndex];
-        // Simple check: assuming backend provides "correct_answer" that matches option text or index
-        // The backend prompt asked for "correct_answer" text.
 
-        // Let's assume exact text match for now
         if (selectedOption === currentQuestion.correct_answer) {
             setScore(prev => prev + 1);
         }
@@ -232,7 +219,6 @@ export function GoalDashboard() {
 
     return (
         <div className="p-4">
-            {/* Breakdown Choice Modal */}
             <AnimatePresence>
                 {breakdownGoalId && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -267,7 +253,6 @@ export function GoalDashboard() {
             </AnimatePresence>
 
 
-            {/* Header */}
             <div className="flex items-center justify-between mb-4">
                 <p className="text-muted text-sm font-medium">Manage, Track, and Crush your goals.</p>
                 <button
@@ -301,11 +286,9 @@ export function GoalDashboard() {
                                 exit={{ opacity: 0, scale: 0.95 }}
                                 className={`group relative bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden hover:shadow-xl transition-all duration-300 ${goal.status === 'completed' ? 'opacity-70' : ''}`}
                             >
-                                {/* Decorative Gradient Blob */}
                                 <div className="absolute top-0 right-0 -mt-16 -mr-16 w-32 h-32 bg-primary/20 rounded-full blur-3xl pointer-events-none group-hover:bg-primary/30 transition-all"></div>
 
                                 <div className="p-6 relative z-10">
-                                    {/* Top Row: Check + Title + Actions */}
                                     <div className="flex items-start justify-between gap-4">
                                         <div className="flex items-start gap-4 flex-1">
                                             <button
@@ -328,7 +311,6 @@ export function GoalDashboard() {
                                                 {goal.description && <p className="text-sm text-muted truncate mt-1">{goal.description}</p>}
 
                                                 <div className="flex flex-wrap items-center gap-2 mt-3 text-xs font-medium">
-                                                    {/* Priority Badge */}
                                                     <span className={`px-2 py-1 rounded-md border ${goal.priority === 'High' ? 'bg-red-500/10 border-red-500/20 text-red-500' :
                                                         goal.priority === 'Medium' ? 'bg-amber-500/10 border-amber-500/20 text-amber-500' :
                                                             'bg-blue-500/10 border-blue-500/20 text-blue-500'
@@ -336,25 +318,20 @@ export function GoalDashboard() {
                                                         {goal.priority}
                                                     </span>
 
-                                                    {/* Duration Badge */}
                                                     <span className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-surface border border-white/5 text-muted">
                                                         <Clock className="w-3.5 h-3.5" />
                                                         {goal.duration} {goal.duration === 1 && goal.duration_unit.endsWith('s') ? goal.duration_unit.slice(0, -1) : goal.duration_unit}
                                                     </span>
 
-                                                    {/* Due Date Badge */}
                                                     {goal.created_at && (() => {
                                                         const dueDate = new Date(goal.created_at);
                                                         if (goal.duration === undefined || goal.duration === null) return null;
 
-                                                        // Calculate Due Date
                                                         if (goal.duration_unit === 'weeks') dueDate.setDate(dueDate.getDate() + goal.duration * 7);
                                                         else if (goal.duration_unit === 'months') dueDate.setMonth(dueDate.getMonth() + goal.duration);
                                                         else dueDate.setDate(dueDate.getDate() + goal.duration);
 
-                                                        // Check Overdue (compare with today)
                                                         const today = new Date();
-                                                        // Reset time part for accurate day comparison
                                                         today.setHours(0, 0, 0, 0);
                                                         const checkDate = new Date(dueDate);
                                                         checkDate.setHours(0, 0, 0, 0);
@@ -375,7 +352,6 @@ export function GoalDashboard() {
                                             </div>
                                         </div>
 
-                                        {/* Action Buttons */}
                                         <div className="flex items-center gap-1">
                                             <button
                                                 onClick={() => openEditModal(goal)}
@@ -394,7 +370,6 @@ export function GoalDashboard() {
                                         </div>
                                     </div>
 
-                                    {/* Roadmap Section */}
                                     <div className="mt-5 pt-4 border-t border-white/5">
                                         {getSubtasks(goal.subtasks).length > 0 ? (
                                             <div>
@@ -426,7 +401,6 @@ export function GoalDashboard() {
                                                                     const text = isObj ? step.text : step;
                                                                     const isCompleted = isObj ? step.completed : false;
 
-                                                                    // Check if this is a day-based task
                                                                     const isDayTask = text?.toLowerCase().includes('day ');
                                                                     let isLocked = false;
                                                                     let currentDay = 0;
@@ -435,7 +409,6 @@ export function GoalDashboard() {
                                                                         const dayMatch = text.match(/day (\d+):/i);
                                                                         if (dayMatch) {
                                                                             currentDay = parseInt(dayMatch[1]);
-                                                                            // Check if previous days are completed
                                                                             const allSubtasks = getSubtasks(goal.subtasks);
                                                                             for (let j = 0; j < i; j++) {
                                                                                 const prevTask = allSubtasks[j];
@@ -498,7 +471,6 @@ export function GoalDashboard() {
                                                                 </button>
                                                             </div>
 
-                                                            {/* Quiz Button if Completed */}
                                                             {getSubtasks(goal.subtasks).every((t: any) => typeof t === 'object' && t.completed) && (
                                                                 <div className="mt-4 px-2">
                                                                     <button
@@ -537,9 +509,7 @@ export function GoalDashboard() {
                 </div>
             )}
 
-            {/* --- Modals --- */}
 
-            {/* Create/Edit Modal */}
             <AnimatePresence>
                 {isEditModalOpen && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm">
@@ -566,7 +536,6 @@ export function GoalDashboard() {
                                 </div>
 
                                 <div className="p-6 space-y-6">
-                                    {/* Title Input */}
                                     <div className="space-y-2">
                                         <label className="text-xs font-bold text-muted uppercase tracking-wider flex items-center gap-2">
                                             <Target className="w-4 h-4 text-primary" /> Title
@@ -582,7 +551,6 @@ export function GoalDashboard() {
                                         />
                                     </div>
 
-                                    {/* Description Input */}
                                     <div className="space-y-2">
                                         <label className="text-xs font-bold text-muted uppercase tracking-wider flex items-center gap-2">
                                             Description <span className="text-muted/50 font-normal normal-case">(Optional)</span>
@@ -595,7 +563,6 @@ export function GoalDashboard() {
                                         />
                                     </div>
 
-                                    {/* Duration */}
                                     <div className="space-y-2">
                                         <label className="text-xs font-bold text-muted uppercase tracking-wider flex items-center gap-2">
                                             <Clock className="w-4 h-4 text-primary" /> Duration
@@ -625,7 +592,6 @@ export function GoalDashboard() {
                                         </div>
                                     </div>
 
-                                    {/* Priority Selection */}
                                     <div className="space-y-3">
                                         <label className="text-xs font-bold text-muted uppercase tracking-wider flex items-center gap-2">
                                             Priority Level
@@ -672,7 +638,6 @@ export function GoalDashboard() {
                 )}
             </AnimatePresence>
 
-            {/* Delete Confirmation Modal */}
             <AnimatePresence>
                 {deleteId && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -710,7 +675,6 @@ export function GoalDashboard() {
                 )}
             </AnimatePresence>
 
-            {/* Quiz Modal */}
             <AnimatePresence>
                 {isQuizOpen && quizData && (
                     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">

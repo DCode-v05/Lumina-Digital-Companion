@@ -16,8 +16,6 @@ axios.interceptors.request.use(
 axios.interceptors.response.use(
     (response) => response,
     (error) => {
-        // Prevent redirect loop if we are already on login or register page
-        // and allow the component to handle the specific 401 error message.
         if (error.response?.status === 401) {
             const currentPath = window.location.pathname;
             if (currentPath !== '/login' && currentPath !== '/register') {
@@ -40,8 +38,6 @@ export interface ChatSession {
     created_at: number;
 }
 
-// --- Auth ---
-
 export const login = async (username: string, password: string) => {
     const formData = new FormData();
     formData.append('username', username);
@@ -61,7 +57,7 @@ export const register = async (email: string, password: string, fullName: string
 
 export const getMe = async () => {
     const response = await axios.get(`${API_URL}/users/me`);
-    return response.data; // User object
+    return response.data;
 }
 
 export const updateFavorites = async (favorites: string) => {
@@ -71,22 +67,22 @@ export const updateFavorites = async (favorites: string) => {
 
 export const getRewards = async () => {
     const response = await axios.get(`${API_URL}/users/me/rewards`);
-    return response.data; // { coins: number, items: RewardItem[] }
+    return response.data;
 }
 
 export const redeemReward = async (cost: number, rewardName: string) => {
     const response = await axios.post(`${API_URL}/users/me/redeem`, { cost, reward_name: rewardName });
-    return response.data; // { status: string, new_balance: number }
+    return response.data;
 }
 
 export const getPurchasedRewards = async () => {
     const response = await axios.get(`${API_URL}/users/me/purchased-rewards`);
-    return response.data; // PurchasedReward[]
+    return response.data;
 }
 
 export const getProfile = async () => {
     const response = await axios.get(`${API_URL}/users/me/profile`);
-    return response.data; // { profile_text: string, facts: string[] }
+    return response.data;
 }
 
 export const updateProfile = async (profileText: string) => {
@@ -94,16 +90,14 @@ export const updateProfile = async (profileText: string) => {
     return response.data;
 }
 
-// --- Chat Management ---
-
 export const createChat = async (title: string = "New Chat") => {
     const response = await axios.post(`${API_URL}/chats`, { title });
-    return response.data; // { id, title, created_at }
+    return response.data;
 }
 
 export const getChats = async () => {
     const response = await axios.get(`${API_URL}/chats`);
-    return response.data; // [ { id, ... }, ... ]
+    return response.data;
 }
 
 export const deleteChat = async (chatId: string) => {
@@ -111,22 +105,18 @@ export const deleteChat = async (chatId: string) => {
     return response.data;
 }
 
-// --- Messaging ---
-
 export const sendMessage = async (chatId: string, message: string) => {
     const response = await axios.post(`${API_URL}/chat`, {
         chat_id: chatId,
         message: message
     });
-    return response.data; // { response: string, chat_id: string, title?: string, mode: string }
+    return response.data;
 };
 
 export const getHistory = async (chatId: string) => {
     const response = await axios.get(`${API_URL}/chats/${chatId}/history`);
     return response.data;
 };
-
-// --- Goals ---
 
 export interface Goal {
     id: number;
@@ -137,12 +127,12 @@ export interface Goal {
     priority: string;
     status: string;
     created_at: string;
-    subtasks: string; // JSON string
+    subtasks: string;
 }
 
 export const getGoals = async () => {
     const response = await axios.get(`${API_URL}/goals`);
-    return response.data; // Goal[]
+    return response.data;
 }
 
 export const createGoal = async (goal: Omit<Goal, 'id' | 'created_at' | 'status'>) => {
@@ -172,8 +162,6 @@ const response = await axios.get(`${API_URL}/goals/${id}/quiz`);
 return response.data;
 }
 
-// --- Integrations ---
-
 export interface IntegrationStatus {
     provider: string;
     is_connected: boolean;
@@ -190,17 +178,17 @@ export const connectIntegration = async (provider: string, accessToken: string) 
 
 export const getIntegrations = async () => {
     const response = await axios.get(`${API_URL}/integrations`);
-    return response.data; // IntegrationStatus[]
+    return response.data;
 }
 
 export const getGitHubRepos = async () => {
     const response = await axios.get(`${API_URL}/integrations/github/repos`);
-    return response.data; // List of repos
+    return response.data;
 }
 
 export const getOneNotePages = async () => {
     const response = await axios.get(`${API_URL}/integrations/onenote/pages`);
-    return response.data; // List of pages
+    return response.data;
 }
 
 export const disconnectIntegration = async (provider: string) => {

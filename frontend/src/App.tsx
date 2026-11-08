@@ -33,7 +33,6 @@ const MODE_BADGES: Record<string, { label: string, color: string }> = {
 };
 
 
-// Simple Toast Component
 function Toast({ message, onClose }: { message: string, onClose: () => void }) {
     useEffect(() => {
         const timer = setTimeout(onClose, 3000);
@@ -55,7 +54,6 @@ function Toast({ message, onClose }: { message: string, onClose: () => void }) {
     );
 }
 
-// Profile Memory Modal
 function ProfileModal({ isOpen, onClose, userData, onDeleteFavorites }: { isOpen: boolean, onClose: () => void, userData: any, onDeleteFavorites?: () => void }) {
     const [facts, setFacts] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
@@ -72,15 +70,14 @@ function ProfileModal({ isOpen, onClose, userData, onDeleteFavorites }: { isOpen
         if (factToDelete === null) return;
 
         const newFacts = facts.filter((_, i) => i !== factToDelete);
-        setFacts(newFacts); // Optimistic update
-        setFactToDelete(null); // Close modal
+        setFacts(newFacts);
+        setFactToDelete(null);
 
         try {
             const newProfileText = newFacts.join('\n');
             await updateProfile(newProfileText);
         } catch (e) {
             console.error("Failed to delete fact", e);
-            // In a real app, might want to revert UI here
         }
     }
 
@@ -132,7 +129,6 @@ function ProfileModal({ isOpen, onClose, userData, onDeleteFavorites }: { isOpen
                             </div>
                         ) : (
                             <div className="space-y-6">
-                                {/* Pinned Favorites */}
                                 {userData?.favorites && (
                                     <div className="group relative">
                                         <div className="flex items-center justify-between mb-2">
@@ -225,7 +221,6 @@ function ProfileModal({ isOpen, onClose, userData, onDeleteFavorites }: { isOpen
     );
 }
 
-// Confirmation Modal Component
 function ConfirmationModal({ isOpen, onClose, onConfirm, title, message }: { isOpen: boolean, onClose: () => void, onConfirm: () => void, title: string, message: string }) {
     if (!isOpen) return null;
 
@@ -272,7 +267,6 @@ function ConfirmationModal({ isOpen, onClose, onConfirm, title, message }: { isO
     );
 }
 
-// Favorites Prompt Modal
 function FavoritesModal({ isOpen, onClose, onSave }: { isOpen: boolean, onClose: () => void, onSave: (favs: string) => void }) {
     const [favs, setFavs] = useState("");
 
@@ -326,9 +320,6 @@ function FavoritesModal({ isOpen, onClose, onSave }: { isOpen: boolean, onClose:
 }
 
 
-// --- Modes ---
-
-
 function ProtectedRoute({ children }: { children: JSX.Element }) {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -357,7 +348,6 @@ function ChatInterface() {
     const inputRef = useRef<HTMLInputElement>(null);
     const navigate = useNavigate();
 
-    // Check for login success flag
     useEffect(() => {
         const justLoggedIn = localStorage.getItem('loginSuccess');
         if (justLoggedIn) {
@@ -366,10 +356,8 @@ function ChatInterface() {
         }
     }, []);
 
-    // Auto-focus input when loading finishes (bot replies)
     useEffect(() => {
         if (!loading) {
-            // Tiny timeout to ensure DOM is ready and state is settled
             setTimeout(() => {
                 inputRef.current?.focus();
             }, 50);
@@ -385,16 +373,13 @@ function ChatInterface() {
                 const userChats = await getChats();
                 setChats(userChats);
 
-                // Default to New Chat instead of opening last chat
                 handleNewChat();
 
-                // Check for Favorites
                 if (!user.favorites) {
                     setTimeout(() => setShowFavoritesModal(true), 1000);
                 }
 
             } catch (err) {
-                // Only redirect if unauthorized
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 if ((err as any).response?.status === 401) {
                     localStorage.removeItem('token');
@@ -409,7 +394,6 @@ function ChatInterface() {
         try {
             const res = await updateFavorites(favs);
             if (userData) {
-                // Use the exact coin balance returned by the backend (which is now 100 for first set)
                 setUserData({ ...userData, favorites: favs, coins: res.coins });
             }
             setShowFavoritesModal(false);
@@ -427,7 +411,6 @@ function ChatInterface() {
             }
             setToastMessage("Core interests cleared. Coins reset.");
 
-            // If currently in Reward Store, redirect out since personalized rewards are gone
             if (activeView === 'rewards') {
                 handleNewChat();
             }
@@ -439,7 +422,7 @@ function ChatInterface() {
     const selectChat = async (id: string | null) => {
         if (!id) return;
         setCurrentChatId(id);
-        setActiveView('chat'); // Switch back to chat
+        setActiveView('chat');
         setMessages([]);
         try {
             const history = await getHistory(id);
@@ -457,7 +440,7 @@ function ChatInterface() {
     const handleNewChat = () => {
         setCurrentChatId(null);
         setMessages([]);
-        setActiveView('chat'); // Switch back to chat on new chat
+        setActiveView('chat');
     }
 
     const handleDeleteClick = (e: React.MouseEvent, id: string) => {
@@ -505,30 +488,22 @@ function ChatInterface() {
 
         try {
             if (!currentChatId) {
-                // Should ideally not happen if handled correctly, but safety net
                 const newChat = await createChat();
                 setCurrentChatId(newChat.id);
-                // We don't wait for state update to be reliable immediately in same scope usually, 
-                // but let's assume valid ID for API call
                 const data = await sendMessage(newChat.id, userMsg);
                 setMessages(prev => [...prev, { role: 'model', content: data.response, mode: data.mode }]);
 
-                // Show Notifications based on flags
                 if (data.memory_updated) {
-                    // Using a separate simple global toast or just reuse the existing one with a custom message
-                    // For now, let's reuse the success toast logic slightly modified or add a new state
-                    // Since we only have 'showSuccessToast', let's add a dynamic toast state
                     setToastMessage("Memory updated with new facts!");
                 }
                 if (data.goal_created) {
                     setToastMessage(`Goal created: ${data.goal_created}`);
                 }
 
-                // Update chat title if backend returned one
                 if (data.title) {
                     newChat.title = data.title;
                 }
-                setChats([newChat, ...chats]); // Update list
+                setChats([newChat, ...chats]);
             } else {
                 const data = await sendMessage(currentChatId, userMsg);
                 setMessages(prev => [...prev, { role: 'model', content: data.response, mode: data.mode }]);
@@ -570,7 +545,6 @@ function ChatInterface() {
 
     return (
         <div className="flex h-screen w-full bg-background text-text font-sans overflow-hidden">
-            {/* ... (Toasts and Modals) */}
             {showSuccessToast && <Toast message="Welcome back! Ready to learn?" onClose={() => setShowSuccessToast(false)} />}
             {toastMessage && <Toast message={toastMessage} onClose={() => setToastMessage(null)} />}
 
@@ -593,7 +567,6 @@ function ChatInterface() {
                 isOpen={showFavoritesModal}
                 onClose={() => {
                     setShowFavoritesModal(false);
-                    // If user skips favorites while trying to access Reward Store, redirect to New Chat
                     if (activeView === 'rewards' && !userData?.favorites) {
                         handleNewChat();
                     }
@@ -602,8 +575,6 @@ function ChatInterface() {
             />
 
 
-
-            {/* Sidebar */}
             <AnimatePresence mode="wait">
                 {sidebarOpen && (
                     <motion.div
@@ -658,7 +629,6 @@ function ChatInterface() {
                             ))}
                         </div>
 
-                        {/* User Profile Footer (Same as before) */}
                         <div className="p-4 border-t border-border dark:border-white/5 mt-auto space-y-2">
                             <button
                                 onClick={() => setActiveView('goals')}
@@ -725,11 +695,9 @@ function ChatInterface() {
                 )}
             </AnimatePresence>
 
-            {/* Main Content Area */}
             <div className="flex-1 flex flex-col relative bg-background h-screen">
                 <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-5 pointer-events-none mix-blend-overlay"></div>
 
-                {/* Header */}
                 <header className="h-16 border-b border-border/60 dark:border-white/5 flex items-center justify-between px-6 bg-surface/80 backdrop-blur-2xl sticky top-0 z-10 transition-colors shadow-sm">
                     <div className="flex items-center gap-3">
                         {!sidebarOpen && (
@@ -768,9 +736,7 @@ function ChatInterface() {
                     </div>
                 ) : (
                     <>
-                        {/* Chat Stream */}
                         <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 scroll-smooth">
-                            {/* ... (Existing Chat Messages rendering) */}
                             <AnimatePresence>
                                 {messages.length === 0 && (
                                     <div className="h-full flex flex-col items-center justify-center text-muted opacity-50">
@@ -879,7 +845,6 @@ function ChatInterface() {
                             <div ref={messagesEndRef} />
                         </div>
 
-                        {/* Input Area */}
                         <div className="p-4 md:p-6 bg-gradient-to-t from-background via-background to-transparent transition-colors">
                             <div className="max-w-4xl mx-auto relative group">
                                 <div className="absolute -inset-1 bg-gradient-to-r from-primary/50 to-secondary/50 rounded-xl opacity-10 group-hover:opacity-20 transition blur-lg"></div>

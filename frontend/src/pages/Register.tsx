@@ -18,7 +18,6 @@ export default function Register() {
 
         try {
             await register(email, password, fullname);
-            // Auto redirect to login
             navigate('/login');
         } catch (err: any) {
             setError(err.response?.data?.detail || 'Registration failed');

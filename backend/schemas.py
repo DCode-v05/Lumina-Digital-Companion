@@ -2,7 +2,6 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from datetime import datetime
 
-# User Schemas
 class UserBase(BaseModel):
     email: EmailStr
     full_name: Optional[str] = None
@@ -21,7 +20,6 @@ class User(UserBase):
     class Config:
         from_attributes = True
 
-# Auth Schemas
 class Token(BaseModel):
     access_token: str
     token_type: str
@@ -29,7 +27,6 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     email: Optional[str] = None
 
-# Chat Schemas
 class CreateChatRequest(BaseModel):
     title: Optional[str] = "New Chat"
 
@@ -40,7 +37,7 @@ class ChatMetadata(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str
-    chat_id: str  # Mandatory now
+    chat_id: str
 
 class ChatResponse(BaseModel):
     response: str
@@ -53,7 +50,6 @@ class ChatResponse(BaseModel):
 class UpdateProfileRequest(BaseModel):
     profile_text: str
 
-# Goal Schemas
 class GoalBase(BaseModel):
     title: str
     description: Optional[str] = None
@@ -155,5 +151,4 @@ class OneNotePageCreate(BaseModel):
     section_id: str
     title: str
     content: str
-
 
